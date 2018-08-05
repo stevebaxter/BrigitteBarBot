@@ -14,7 +14,8 @@ To download and install this code:
 ## Hardware Installation
 
 1. Disconnect USB power
-2. Connect the four motors to M1-M4
+2. Connect the left motors to M1 and M2
+2. Connect the right motors to M3 and M4
 3. Connect the motor encoders, the sensor connector (with two wires) should match the arrow pin
 4. Connect the SBUS/PPM RC receiver power - red to 5V, black to GND (pins 3 and 4 of the power connector on the ComMotion board)
 5. Connect the SBUS/PPM RC receiver signal wire to PD2 (INT0)
