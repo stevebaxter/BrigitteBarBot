@@ -4,7 +4,6 @@ void TXconfig()
   {
     Serial.begin(57600);
     Serial.println("");
-    Serial.print("Demo:");Serial.println(demo,DEC);
     Serial.print("Mode:");Serial.println(mode,DEC);
     Serial.print("Configuration:");Serial.println(configuration,DEC);
     Serial.println("");

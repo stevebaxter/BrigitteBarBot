@@ -55,7 +55,8 @@ void setup()
   //
   // We configure individual motor control with 1200 mA current limit
   // on each motor.
-  BasicConfig(0, 19, 0, 120, 120, 120, 120, 0, 1);
+  BasicConfig(0, 3, 0, 120, 120, 120, 120, 0, 1);
+  EncoderConfig(11500, 100, 10, 10);
 
   Serial.println("Starting Brigitte...");
   IndividualMotorControl(0, 0, 0, 0);
@@ -64,34 +65,44 @@ void setup()
 
 void loop()
 {
+  // Last values for motor control
+  static long lastRightMotor = 0;
+  static long lastLeftMotor = 0;
+
   // Get the stick values. Channel 1 is left/right, channel 2 is forward/backward,
   // on a scale of -stickValueRange to +stickValueRange.
   long stickX = GetStickPositionForChannel(1);
   long stickY = GetStickPositionForChannel(2);
 
-  Serial.print("stickX: " + String(stickX) + " ");
-  Serial.print("stickY: " + String(stickY) + " ");
+  long rightMotor = 0;
+  long leftMotor = 0;
 
   // If they are both 0 then all stop
   if ((stickX == 0) && (stickY == 0))
   {
-    Serial.println("All stop");
+    // Make sure we are stopped
     IndividualMotorControl(0, 0, 0, 0);
-    return;
+  }
+  else
+  {
+    // Calculate left and right motor speeds on a scale of -stickValueRange (full reverse) to +stickValueRange (full forward).
+    // Adapted from http://home.kendra.com/mauser/joystick.html.
+    stickX = -stickX;
+    long v = ((stickValueRange - abs(stickX)) * stickY / stickValueRange) + stickY;
+    long w = ((stickValueRange - abs(stickY)) * stickX / stickValueRange) + stickX;
+    rightMotor = (v + w) / 2;
+    leftMotor = (v - w) / 2;
   }
 
-  // Calculate left and right motor speeds on a scale of -stickValueRange (full reverse) to +stickValueRange (full forward).
-  // Adapted from http://home.kendra.com/mauser/joystick.html.
-  stickX = -stickX;
-  long v = ((stickValueRange - abs(stickX)) * stickY / stickValueRange) + stickY;
-  long w = ((stickValueRange - abs(stickY)) * stickX / stickValueRange) + stickX;
-  long rightMotor = (v + w) / 2;
-  long leftMotor = (v - w) / 2;
+  // Send the values to the motors if they have changed
+  if ((leftMotor != lastLeftMotor) || (rightMotor != lastRightMotor))
+  {
+    IndividualMotorControl(leftMotor, 0, 0, 0);
+    lastLeftMotor = leftMotor;
+    lastRightMotor = rightMotor;
 
-  Serial.print("L: " + String(leftMotor) + " ");
-  Serial.print("R: " + String(rightMotor) + " ");
-  Serial.println();
-
-  // Send the values to the motors
-  IndividualMotorControl(leftMotor, leftMotor, rightMotor, rightMotor);  
+    Serial.print("L: " + String(leftMotor) + " ");
+    Serial.print("R: " + String(rightMotor) + " ");
+    Serial.println();
+  }
 }
