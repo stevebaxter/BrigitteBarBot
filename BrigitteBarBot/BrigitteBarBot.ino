@@ -46,21 +46,24 @@ long GetStickPositionForChannel(int channel)
 void setup()
 {
   // Required to support I2C communication
-  Wire.begin(1);
+  Wire.begin();
   Wire.setTimeout(1L);
+  
   Serial.begin(9600);
+
+  // Wait for the ComMotion shield to be available
+  delay(3000);
 
   // Send Basic Configuration packet to controller
   // See ComMotion.h for argument definition list.
   //
   // We configure individual motor control with 1200 mA current limit
   // on each motor.
-  BasicConfig(0, 3, 0, 120, 120, 120, 120, 0, 1);
+  BasicConfig(0, 19, 0, 120, 120, 120, 120, 0, 1);
   EncoderConfig(11500, 100, 10, 10);
 
   Serial.println("Starting Brigitte...");
   IndividualMotorControl(0, 0, 0, 0);
-  delay(1000);
 }
 
 void loop()
@@ -97,7 +100,7 @@ void loop()
   // Send the values to the motors if they have changed
   if ((leftMotor != lastLeftMotor) || (rightMotor != lastRightMotor))
   {
-    IndividualMotorControl(leftMotor, 0, 0, 0);
+    IndividualMotorControl(leftMotor, leftMotor, rightMotor, rightMotor);
     lastLeftMotor = leftMotor;
     lastRightMotor = rightMotor;
 
