@@ -9,7 +9,7 @@ To download and install this code:
 1. Clone this repository
 2. Install [PPM-reader](https://github.com/Nikkilae/PPM-reader) in your Arduino library folder according to the instructions in the [README](https://github.com/Nikkilae/PPM-reader/blob/master/README.md).
 3. Use ArduinoISP to update the firmware on both ComMotion processors to the firwmare in ComMotion_Shield_V2_3
-4. Upload BrigitteBarBot to the main Ardiono board
+4. Upload BrigitteBarBot to the main Arduino board
 
 ## Hardware Installation
 
