@@ -10,10 +10,59 @@
 // Range for stick values
 const long stickValueRange = 255;
 
-// Initialize a PPMReader on digital pin 2 with 6 expected channels.
-int interruptPin = 2;
-int channelCount = 6;
-PPMReader ppm(interruptPin, channelCount);
+// Initialize a PPMReader on digital pin 2 with 8 expected channels.
+#define kInterruptPin 2
+#define kChannelCount 8
+PPMReader ppm(kInterruptPin, kChannelCount);
+
+// We filter values from the PPM controller as we seem to get spurious values
+long channelFilter[kChannelCount][3];
+int channelFilterIndex[kChannelCount];
+
+long FilterChannel(int channel, long value)
+{
+  long outputValue = value;
+
+  // Make channel zero-based
+  channel--;
+
+  int index = channelFilterIndex[channel];
+
+  channelFilter[channel][index] = value;
+
+  long value0 = channelFilter[channel][0];
+  long value1 = channelFilter[channel][1];
+  long value2 = channelFilter[channel][2];
+
+  long average = (value0 + value1 + value2) / 3;
+
+  // Of the values in the filter, reject the outlier
+  long diff0 = abs(value0 - average);
+  long diff1 = abs(value1 - average);
+  long diff2 = abs(value2 - average);
+
+  if ((diff0 > diff1) && (diff0 > diff2))
+  {
+    // Entry 0 is the outlier
+    outputValue = (channelFilter[channel][1] + channelFilter[channel][2]) / 2;
+  }
+  else if ((diff1 > diff0) && (diff1 > diff2))
+  {
+    // Entry 1 is the outlier
+    outputValue = (channelFilter[channel][0] + channelFilter[channel][2]) / 2;
+  }
+  else if ((diff2 > diff0) && (diff2 > diff1))
+  {
+    // Entry 2 is the outlier
+    outputValue = (channelFilter[channel][0] + channelFilter[channel][1]) / 2;
+  }
+
+  index++;
+  index %= 3;
+  channelFilterIndex[channel] = index;
+
+  return outputValue;
+}
 
 long GetStickPositionForChannel(int channel)
 {
@@ -27,6 +76,7 @@ long GetStickPositionForChannel(int channel)
 
   // Get the raw value
   long value = ppm.latestValidChannelValue(channel, centreValue);
+  value = FilterChannel(channel, value);
 
   // Convert to our range
   value = (value - centreValue) * (stickValueRange * 2) / valueRange;
@@ -43,13 +93,36 @@ long GetStickPositionForChannel(int channel)
   return value;
 }
 
+long LimitAcceleration(long newValue, long lastValue)
+{
+  if (newValue > lastValue)
+  {
+    newValue = min(newValue, lastValue + 10);
+  }
+  else if (newValue < lastValue)
+  {
+    newValue = max(newValue, lastValue - 10);
+  }
+
+  return newValue;
+} 
+
 void setup()
 {
   // Required to support I2C communication
   Wire.begin();
   Wire.setTimeout(1L);
-  
+
   Serial.begin(9600);
+
+  ppm.channelValueMaxError = 20;
+  ppm.blankTime = 5000;
+  ppm.minChannelValue = 1100;
+  ppm.maxChannelValue = 1900;
+
+  // Initialise the channel filter
+  memset(channelFilter, 0, kChannelCount * 3 * sizeof(long));
+  memset(channelFilterIndex, 0, kChannelCount * sizeof(long));
 
   // Wait for the ComMotion shield to be available
   delay(3000);
@@ -97,15 +170,21 @@ void loop()
     leftMotor = (v - w) / 2;
   }
 
+  // Limit the speed of changes
+  leftMotor = LimitAcceleration(leftMotor, lastLeftMotor);
+  rightMotor = LimitAcceleration(rightMotor, lastRightMotor);
+
   // Send the values to the motors if they have changed
   if ((leftMotor != lastLeftMotor) || (rightMotor != lastRightMotor))
   {
     IndividualMotorControl(leftMotor, leftMotor, rightMotor, rightMotor);
     lastLeftMotor = leftMotor;
     lastRightMotor = rightMotor;
+  }
 
     Serial.print("L: " + String(leftMotor) + " ");
     Serial.print("R: " + String(rightMotor) + " ");
     Serial.println();
-  }
+  
+  delay(50);
 }
