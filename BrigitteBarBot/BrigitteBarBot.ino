@@ -81,8 +81,8 @@ long GetStickPositionForChannel(int channel)
   // Convert to our range
   value = (value - centreValue) * (stickValueRange * 2) / valueRange;
 
-  // If the absolute value is <10 then stop - this gives us a "dead zone)
-  if (abs(value) < (stickValueRange / 10))
+  // If the absolute value is <20 then stop - this gives us a "dead zone)
+  if (abs(value) < (stickValueRange / 5))
   {
     value = 0;
   }
@@ -147,8 +147,8 @@ void loop()
 
   // Get the stick values. Channel 1 is left/right, channel 2 is forward/backward,
   // on a scale of -stickValueRange to +stickValueRange.
-  long stickX = GetStickPositionForChannel(1);
-  long stickY = GetStickPositionForChannel(2);
+  long stickX = GetStickPositionForChannel(4);
+  long stickY = GetStickPositionForChannel(3);
 
   long rightMotor = 0;
   long leftMotor = 0;
