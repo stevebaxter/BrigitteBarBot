@@ -2,18 +2,23 @@
    Motor control for Brigitte BarBot
 */
 
-#include <Wire.h>
 #include <PPMReader.h>
 
-#include "ComMotion.h"
-
 // Range for stick values
-const long stickValueRange = 255;
+const long stickValueRange = 100;
 
 // Initialize a PPMReader on digital pin 2 with 8 expected channels.
 #define kInterruptPin 2
 #define kChannelCount 8
 PPMReader ppm(kInterruptPin, kChannelCount);
+
+#define kEnableLeftPin 4
+#define kDirectionLeftPin 5
+#define kSpeedLeftPin 3
+
+#define kSpeedRightPin 6
+#define kDirectionRightPin 7
+#define kEnableRightPin 8
 
 // We filter values from the PPM controller as we seem to get spurious values
 long channelFilter[kChannelCount][3];
@@ -93,26 +98,35 @@ long GetStickPositionForChannel(int channel)
   return value;
 }
 
-long LimitAcceleration(long newValue, long lastValue)
+void MotorControl(long leftMotor, long rightMotor)
 {
-  if (newValue > lastValue)
+  if (leftMotor == 0)
   {
-    newValue = min(newValue, lastValue + 10);
+    analogWrite(kSpeedLeftPin, 0);
+    digitalWrite(kEnableLeftPin, LOW);
   }
-  else if (newValue < lastValue)
+  else
   {
-    newValue = max(newValue, lastValue - 10);
+    digitalWrite(kDirectionLeftPin, leftMotor < 0);
+    analogWrite(kSpeedLeftPin, abs(leftMotor));    
+    digitalWrite(kEnableLeftPin, HIGH);
   }
 
-  return newValue;
-} 
+  if (rightMotor == 0)
+  {
+    analogWrite(kSpeedRightPin, 0);
+    digitalWrite(kEnableRightPin, LOW);
+  }
+  else
+  {
+    digitalWrite(kDirectionRightPin, rightMotor < 0);
+    analogWrite(kSpeedRightPin, abs(rightMotor));    
+    digitalWrite(kEnableRightPin, HIGH);
+  }
+}
 
 void setup()
 {
-  // Required to support I2C communication
-  Wire.begin();
-  Wire.setTimeout(1L);
-
   Serial.begin(9600);
 
   ppm.channelValueMaxError = 20;
@@ -124,19 +138,23 @@ void setup()
   memset(channelFilter, 0, kChannelCount * 3 * sizeof(long));
   memset(channelFilterIndex, 0, kChannelCount * sizeof(long));
 
-  // Wait for the ComMotion shield to be available
-  delay(3000);
-
-  // Send Basic Configuration packet to controller
-  // See ComMotion.h for argument definition list.
-  //
-  // We configure individual motor control with 1200 mA current limit
-  // on each motor.
-  BasicConfig(0, 19, 0, 120, 120, 120, 120, 0, 1);
-  EncoderConfig(11500, 100, 10, 10);
+  // Set up motor controls
+  pinMode(kEnableLeftPin, OUTPUT);
+  digitalWrite(kEnableLeftPin, LOW);
+  pinMode(kSpeedLeftPin, OUTPUT);
+  analogWrite(kSpeedLeftPin, 0);
+  pinMode(kDirectionLeftPin, OUTPUT);
+  digitalWrite(kDirectionLeftPin, LOW);
+  pinMode(kEnableRightPin, OUTPUT);
+  digitalWrite(kEnableRightPin, LOW);
+  pinMode(kSpeedRightPin, OUTPUT);
+  analogWrite(kSpeedRightPin, 0);
+  pinMode(kDirectionRightPin, OUTPUT);
+  digitalWrite(kDirectionRightPin, LOW);
 
   Serial.println("Starting Brigitte...");
-  IndividualMotorControl(0, 0, 0, 0);
+
+  MotorControl(0, 0);
 }
 
 void loop()
@@ -157,7 +175,7 @@ void loop()
   if ((stickX == 0) && (stickY == 0))
   {
     // Make sure we are stopped
-    IndividualMotorControl(0, 0, 0, 0);
+    MotorControl(0, 0);
   }
   else
   {
@@ -170,21 +188,19 @@ void loop()
     leftMotor = (v - w) / 2;
   }
 
-  // Limit the speed of changes
-  leftMotor = LimitAcceleration(leftMotor, lastLeftMotor);
-  rightMotor = LimitAcceleration(rightMotor, lastRightMotor);
-
   // Send the values to the motors if they have changed
   if ((leftMotor != lastLeftMotor) || (rightMotor != lastRightMotor))
   {
-    IndividualMotorControl(leftMotor, leftMotor, rightMotor, rightMotor);
+    MotorControl(leftMotor, rightMotor);
     lastLeftMotor = leftMotor;
     lastRightMotor = rightMotor;
   }
 
-    Serial.print("L: " + String(leftMotor) + " ");
-    Serial.print("R: " + String(rightMotor) + " ");
-    Serial.println();
+  Serial.print("stickX: " + String(stickX) + " ");
+  Serial.print("stickY: " + String(stickY) + " ");
+  Serial.print("L: " + String(leftMotor) + " ");
+  Serial.print("R: " + String(rightMotor) + " ");
+  Serial.println();
   
   delay(50);
 }
