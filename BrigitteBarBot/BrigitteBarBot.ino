@@ -119,7 +119,8 @@ void MotorControl(long leftMotor, long rightMotor)
   }
   else
   {
-    digitalWrite(kDirectionRightPin, rightMotor < 0);
+    // Right hand motor is reversed
+    digitalWrite(kDirectionRightPin, rightMotor > 0);
     analogWrite(kSpeedRightPin, abs(rightMotor));    
     digitalWrite(kEnableRightPin, HIGH);
   }
